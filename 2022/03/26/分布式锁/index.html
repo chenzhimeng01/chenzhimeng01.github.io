@@ -6,15 +6,15 @@
   
   <title>分布式锁 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="Redis-Redisson 实现 加锁机制如果客户端面对的是一个 Redis 集群，会首先根据 hash 选择到一台 master，然后发送一段 Lua 脚本到 master 上。 1234567891011121314151617181920--- KEYS[1]: 分布式锁 key--- ARGV[1]: 代表锁生存时间，默认 30s--- ARGV[2]: 加锁的客户端 id--- 加锁成">
+  <meta name="description" content="Redis-Redisson 实现  加锁机制如果客户端面对的是一个 Redis 集群，会首先根据 hash 选择到一台 master，然后发送一段 Lua 脚本到 master 上。 1234567891011121314151617181920--- KEYS[1]: 分布式锁 key--- ARGV[1]: 代表锁生存时间，默认 30s--- ARGV[2]: 加锁的客户端 id--- 加锁">
 <meta property="og:type" content="article">
 <meta property="og:title" content="分布式锁">
 <meta property="og:url" content="http://example.com/2022/03/26/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="Redis-Redisson 实现 加锁机制如果客户端面对的是一个 Redis 集群，会首先根据 hash 选择到一台 master，然后发送一段 Lua 脚本到 master 上。 1234567891011121314151617181920--- KEYS[1]: 分布式锁 key--- ARGV[1]: 代表锁生存时间，默认 30s--- ARGV[2]: 加锁的客户端 id--- 加锁成">
+<meta property="og:description" content="Redis-Redisson 实现  加锁机制如果客户端面对的是一个 Redis 集群，会首先根据 hash 选择到一台 master，然后发送一段 Lua 脚本到 master 上。 1234567891011121314151617181920--- KEYS[1]: 分布式锁 key--- ARGV[1]: 代表锁生存时间，默认 30s--- ARGV[2]: 加锁的客户端 id--- 加锁">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="http://example.com/2022-03-26-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/redisson.png">
-<meta property="og:image" content="http://example.com/2022-03-26-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/zk-curator.png">
+<meta property="og:image" content="http://example.com/2022/03/26/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/redisson.png">
+<meta property="og:image" content="http://example.com/2022/03/26/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/zk-curator.png">
 <meta property="article:published_time" content="2022-03-26T13:11:35.000Z">
 <meta property="article:modified_time" content="2022-03-26T14:27:24.682Z">
 <meta property="article:author" content="John Doe">
@@ -22,7 +22,7 @@
 <meta property="article:tag" content="redis">
 <meta property="article:tag" content="zookeeper">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/2022-03-26-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/redisson.png">
+<meta name="twitter:image" content="http://example.com/2022/03/26/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/redisson.png">
   
     <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
   
@@ -105,14 +105,16 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <h1 id="Redis-Redisson-实现"><a href="#Redis-Redisson-实现" class="headerlink" title="Redis-Redisson 实现"></a>Redis-Redisson 实现</h1><p><img src="/2022-03-26-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/redisson.png" alt="redisson"></p>
+        <h1 id="Redis-Redisson-实现"><a href="#Redis-Redisson-实现" class="headerlink" title="Redis-Redisson 实现"></a>Redis-Redisson 实现</h1><img src="/2022/03/26/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/redisson.png" class="" title="redisson">
+
 <h2 id="加锁机制"><a href="#加锁机制" class="headerlink" title="加锁机制"></a>加锁机制</h2><p>如果客户端面对的是一个 Redis 集群，会首先根据 hash 选择到一台 master，然后发送一段 Lua 脚本到 master 上。</p>
 <figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">--- KEYS[1]: 分布式锁 key</span></span><br><span class="line"><span class="comment">--- ARGV[1]: 代表锁生存时间，默认 30s</span></span><br><span class="line"><span class="comment">--- ARGV[2]: 加锁的客户端 id</span></span><br><span class="line"></span><br><span class="line"><span class="comment">--- 加锁成功</span></span><br><span class="line"><span class="keyword">if</span> (redis.call(<span class="string">&#x27;exists&#x27;</span>, KEYS[<span class="number">1</span>]) == <span class="number">0</span>) <span class="keyword">then</span></span><br><span class="line">	redis.call(<span class="string">&#x27;hset&#x27;</span>, KEYS[<span class="number">1</span>], ARGV[<span class="number">2</span>], <span class="number">1</span>); </span><br><span class="line">	redis.call(<span class="string">&#x27;pexpire&#x27;</span>, KEYS[<span class="number">1</span>], ARGV[<span class="number">1</span>]);</span><br><span class="line">	<span class="keyword">return</span> <span class="literal">nil</span>;</span><br><span class="line"><span class="keyword">end</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">--- 可重入加锁机制</span></span><br><span class="line"><span class="keyword">if</span> (redis.call(<span class="string">&#x27;hexists&#x27;</span>, KEYS[<span class="number">1</span>], ARGV[<span class="number">2</span>]) == <span class="number">1</span>) <span class="keyword">then</span></span><br><span class="line">	redis.call(<span class="string">&#x27;hincrby&#x27;</span>, KEYS[<span class="number">1</span>], ARGV[<span class="number">2</span>], <span class="number">1</span>);</span><br><span class="line">	redis.call(<span class="string">&#x27;pexpire&#x27;</span>, KEYS[<span class="number">1</span>], ARGv[<span class="number">1</span>]); </span><br><span class="line">	<span class="keyword">return</span> <span class="literal">nil</span>;</span><br><span class="line"><span class="keyword">end</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">--- 锁互斥</span></span><br><span class="line"><span class="keyword">return</span> redis.call(<span class="string">&#x27;pttl&#x27;</span>, KEYS[<span class="number">1</span>]);</span><br></pre></td></tr></table></figure>
 
 <h2 id="自动延期机制"><a href="#自动延期机制" class="headerlink" title="自动延期机制"></a>自动延期机制</h2><p>客户端加锁成功，就会启动一个 watchdog 看门狗后台线程，每 10s 检查一下，如果客户端还持有锁 key，就会不断地延长锁 key 的生存时间。</p>
 <h2 id="释放锁机制"><a href="#释放锁机制" class="headerlink" title="释放锁机制"></a>释放锁机制</h2><p>每次都对加锁次数减 1。如果发现锁次数是 0 了，说明这个客户端已经不再持有锁了，就会用 <code>del key</code> 命令，从 Redis 里删除这个 key。而另一客户端就可以尝试完成加锁了。</p>
 <h2 id="缺点"><a href="#缺点" class="headerlink" title="缺点"></a>缺点</h2><p>对某个 master 成功上锁后，会异步复制给对应的 slave。但是这个过程一旦发生 master 宕机，主备切换，slave 变为了 master。会导致另一客户端上锁成功。</p>
-<h1 id="Zookeeper-Curator-实现"><a href="#Zookeeper-Curator-实现" class="headerlink" title="Zookeeper-Curator 实现"></a>Zookeeper-Curator 实现</h1><p><img src="/2022-03-26-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/zk-curator.png" alt="zk-curator"></p>
+<h1 id="Zookeeper-Curator-实现"><a href="#Zookeeper-Curator-实现" class="headerlink" title="Zookeeper-Curator 实现"></a>Zookeeper-Curator 实现</h1><img src="/2022/03/26/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/zk-curator.png" class="" title="zk-curator">
+
 <h2 id="加锁机制-1"><a href="#加锁机制-1" class="headerlink" title="加锁机制"></a>加锁机制</h2><p>分布式锁只是 zk 上的一个节点，客户端对 zk 发起加锁请求会进行以下操作：</p>
 <ol>
 <li>在这个锁节点下创建一个临时顺序节点，这个顺序节点有 zk 内部自行维护的一个节点序号。</li>
@@ -128,7 +130,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2022/03/26/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" data-id="cl17yssn10000cstz3ryageka" data-title="分布式锁" class="article-share-link">Share</a>
+      <a data-url="http://example.com/2022/03/26/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" data-id="cl17yvatn0000qwtzbifv0jt1" data-title="分布式锁" class="article-share-link">Share</a>
       
       
       
